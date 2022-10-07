@@ -1,0 +1,72 @@
+blueprint:
+  name: GE Switch Double Taps
+  description: Respond to double tap events from supported GE zwave_js switches.
+  domain: automation
+
+  input:
+    device:
+      name: Switch Device
+      description: A GE switch that supports double taps.
+      selector:
+        device:
+          integration: zwave_js
+          manufacturer: Enbrighten
+
+    double_tap_on:
+      name: Double Tap On
+      description: Actions to run for a double tap on.
+      default: []
+      selector:
+        action:
+
+    double_tap_off:
+      name: Double Tap Off
+      description: Actions to run for a double tap off.
+      default: []
+      selector:
+        action:
+
+mode: single
+max_exceeded: silent
+
+trigger:
+  - platform: event
+    event_type: zwave_js_value_notification
+    event_data:
+      device_id: !input device
+      command_class: 32  # Basic
+  - platform: event
+    event_type: zwave_js_value_notification
+    event_data:
+      device_id: !input device
+      command_class: 91  # Central Scene
+      value: KeyPressed2x
+      property_key: '001' # Up
+  - platform: event
+    event_type: zwave_js_value_notification
+    event_data:
+      device_id: !input device
+      command_class: 91  # Central Scene
+      value: KeyPressed2x
+      property_key: '002' # Down
+
+action:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.event.data.command_class == 32 }}"
+        sequence:
+          - choose:
+            - conditions: "{{ trigger.event.data.value_raw == 0 }}"
+              sequence: !input double_tap_off
+            - conditions: "{{ trigger.event.data.value_raw == 255 }}"
+              sequence: !input double_tap_on
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.event.data.command_class == 91 }}"
+        sequence:
+          - choose:
+            - conditions: "{{ trigger.event.data.property_key == '002' }}"
+              sequence: !input double_tap_off
+            - conditions: "{{ trigger.event.data.property_key == '001' }}"
+              sequence: !input double_tap_on
