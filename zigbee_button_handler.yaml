@@ -1,7 +1,6 @@
 blueprint:
   name: Generic Button Blueprint
-  description: |'
-    Automate button press events for Zigbee button sensors.
+  description: 'Automate button press events for Zigbee button sensors.
 
     Supports:
       * both zha and zigbee2mqtt integrations.
