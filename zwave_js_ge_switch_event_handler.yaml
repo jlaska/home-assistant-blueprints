@@ -1,6 +1,6 @@
 blueprint:
-  name: GE Switch Double Taps
-  description: Respond to double tap events from supported GE zwave_js switches.
+  name: Z-Wave switch double-tap
+  description: Respond to double tap events from supported GE Z-Wave switches.
   domain: automation
 
   input:
