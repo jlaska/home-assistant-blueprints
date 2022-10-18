@@ -32,7 +32,6 @@ blueprint:
     - If you do not enable the optional entities the automation will skip these conditions.
 
 
-
     Optional entities:
 
     - Illuminance sensor (sensor in illuminance class)
@@ -100,7 +99,7 @@ blueprint:
           domain: input_datetime
     no_motion_wait:
       name: (OPTIONAL) Turn off wait time (minutes)
-      description: Time in minutes to leave the target entity on after last motion is detected. If not used entity will not auto turn off.
+      description: Time in minutes to leave the target entity on after last motion is detected. If not used entity will turn off immediately.
       default:
       selector:
         entity:
@@ -148,93 +147,107 @@ trigger:
 
 condition:
 # First condition: When entity was already on because the automation ran recently, do not check illuminance because it could have increased above threshold because of a light that was just turned on.
-  - condition: template
+  - alias: 'Assert target_entity is already on or illuminance requirements met'
+    condition: template
     value_template: >
       {% set illuminance_defined = illuminance_currently != none and illuminance_cutoff != none  %}
       {% set illuminance_defined_and_low = (illuminance_defined and (states(illuminance_currently) | int(0) < states(illuminance_cutoff) | int(0)))  %}
 
       {% set target_entity_domain_supports_on_state_check = entity_domain != 'scene' and entity_domain != 'script' %}
       {{
-      ( target_entity_domain_supports_on_state_check and states(target_entity) == 'on') or
-      ( target_entity_domain_supports_on_state_check and states(target_entity) == 'off' and not illuminance_defined) or
-      ( target_entity_domain_supports_on_state_check and states(target_entity) == 'off' and illuminance_defined_and_low) or
+      ( target_entity_domain_supports_on_state_check and is_state(target_entity, 'on') ) or
+      ( target_entity_domain_supports_on_state_check and is_state(target_entity, 'off') and not illuminance_defined) or
+      ( target_entity_domain_supports_on_state_check and is_state(target_entity, 'off') and illuminance_defined_and_low) or
       ( not target_entity_domain_supports_on_state_check and illuminance_defined_and_low) or
       ( not target_entity_domain_supports_on_state_check and not illuminance_defined)
       }}
-  - condition: template
-    value_template: "{{ (blocker_entity == none) or (states(blocker_entity) == 'off') }}"
+  - alias: 'Assert blocker_entity is not defined or off'
+    condition: template
+    value_template: "{{ (blocker_entity == none) or is_state(blocker_entity, 'off') }}"
 
 action:
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: >
-          {% set current_time = now().strftime("%H:%M")  %}
+  - alias: 'Conditionally turn on target_entity'
+    choose:
+      - conditions:
+        - condition: template
+          value_template: >
+            {% set current_time = now().strftime("%H:%M")  %}
 
-          {% if time_limit_before == none and time_limit_after == none %}
-          true
-          {% endif %}
-
-          {% if time_limit_before != none and time_limit_after == none %}
-          {% set current_time_is_before_limit = current_time < states(time_limit_before)  %}
-          {{ current_time_is_before_limit }}
-          {% elif time_limit_before == none and time_limit_after != none %}
-          {% set current_time_is_after_limit = current_time > states(time_limit_after)  %}
-          {{ current_time_is_after_limit }}
-          {% endif %}
-
-          {% if time_limit_before != none and time_limit_after != none %}
-          {% set before_limit_is_tomorrow = states(time_limit_before) < states(time_limit_after)  %}
-          {% set current_time_is_before_limit = current_time < states(time_limit_before)  %}
-          {% set current_time_is_after_limit = current_time > states(time_limit_after)  %}
-          {% set time_window_spans_midnight = states(time_limit_after) > states(time_limit_before)  %}
-            {% if time_window_spans_midnight != none and time_window_spans_midnight and before_limit_is_tomorrow %}
-            {{ current_time_is_after_limit or current_time_is_before_limit }}
-            {% elif time_window_spans_midnight != none and not time_window_spans_midnight %}
-            {{ current_time_is_before_limit and current_time_is_after_limit }}
+            {% if time_limit_before == none and time_limit_after == none %}
+            true
             {% endif %}
-          {% endif %}
+
+            {% if time_limit_before != none and time_limit_after == none %}
+            {% set current_time_is_before_limit = current_time < states(time_limit_before)  %}
+            {{ current_time_is_before_limit }}
+            {% elif time_limit_before == none and time_limit_after != none %}
+            {% set current_time_is_after_limit = current_time > states(time_limit_after)  %}
+            {{ current_time_is_after_limit }}
+            {% endif %}
+
+            {% if time_limit_before != none and time_limit_after != none %}
+            {% set before_limit_is_tomorrow = states(time_limit_before) < states(time_limit_after)  %}
+            {% set current_time_is_before_limit = current_time < states(time_limit_before)  %}
+            {% set current_time_is_after_limit = current_time > states(time_limit_after)  %}
+            {% set time_window_spans_midnight = states(time_limit_after) > states(time_limit_before)  %}
+              {% if time_window_spans_midnight != none and time_window_spans_midnight and before_limit_is_tomorrow %}
+              {{ current_time_is_after_limit or current_time_is_before_limit }}
+              {% elif time_window_spans_midnight != none and not time_window_spans_midnight %}
+              {{ current_time_is_before_limit and current_time_is_after_limit }}
+              {% endif %}
+            {% endif %}
         sequence:
           - service: homeassistant.turn_on
             entity_id: !input target_entity
-  - alias: "Check if blocker entity is defined and on"
-    condition: template
-    value_template: "{{ (turn_off_blocker_entity == none) or (states(turn_off_blocker_entity) == 'off') }}"
-  - wait_for_trigger:
+
+  - alias: 'Wait for motion_sensor off'
+    wait_for_trigger:
       platform: state
       entity_id: !input motion_sensor
       from: "on"
       to: "off"
+
   - choose:
-    - alias: 'Motion wait not defined and target off entity not defined'
+    - alias: 'Wait for no motion'
       conditions:
         - condition: template
-          value_template: "{{ no_motion_wait == none and target_off_entity == none }}"
-      sequence:
-        - service: homeassistant.turn_off
-          entity_id: !input target_entity
-    - alias: 'Motion wait not defined and target off entity defined'
-      conditions:
-        - condition: template
-          value_template: "{{ no_motion_wait == none and target_off_entity != none }}"
-      sequence:
-        - service: homeassistant.turn_off
-          entity_id: !input target_off_entity
-    - alias: 'Motion wait defined and target off entity not defined'
-      conditions:
-        - condition: template
-          value_template: "{{ no_motion_wait != none and target_off_entity == none }}"
+          value_template: "{{ no_motion_wait != none }}"
       sequence:
         - delay:
             minutes: '{{ states(no_motion_wait) | int(0) }}'
-        - service: homeassistant.turn_off
-          entity_id: !input target_entity
-    - alias: 'Motion wait defined and target off entity defined'
+
+  - choose:
+    - alias: "Wait for turn off blocker entity"
       conditions:
         - condition: template
-          value_template: "{{ no_motion_wait != none and target_off_entity != none }}"
+          value_template: '{{ turn_off_blocker_entity != none }}'
+        - condition: template
+          value_template: '{{ turn_off_blocker_wait != none }}'
       sequence:
-        - delay:
-            minutes: '{{ states(no_motion_wait) | int(0) }}'
-        - service: homeassistant.turn_off
-          entity_id: !input target_off_entity
+        - wait_template: "{{ is_state(turn_off_blocker_entity, 'off') }}"
+          timeout:
+            minutes: '{{ states(turn_off_blocker_wait) | int(0) }}'
+        # The following doesn't work ... not sure why
+        # - wait_for_trigger:
+        #     platform: state
+        #     entity_id: !input turn_off_blocker_entity
+        #     from: "on"
+        #     to: "off"
+        #   timeout:
+        #     minutes: '{{ states(turn_off_blocker_wait) | int(0) }}'
+
+  - alias: "Assert turn off blocker entity is not defined or off"
+    condition: template
+    value_template: "{{ (turn_off_blocker_entity == none) or is_state(turn_off_blocker_entity, 'off') }}"
+
+  - alias: "Turn off entity"
+    choose:
+      - conditions:
+        - condition: template
+          value_template: "{{ target_off_entity == none }}"
+        sequence:
+          service: homeassistant.turn_off
+          entity_id: !input target_entity
+    default:
+      - service: homeassistant.turn_off
+        entity_id: !input target_off_entity
