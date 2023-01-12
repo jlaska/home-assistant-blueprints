@@ -146,21 +146,6 @@ trigger:
   to: 'on'
 
 condition:
-# First condition: When entity was already on because the automation ran recently, do not check illuminance because it could have increased above threshold because of a light that was just turned on.
-  - alias: 'Assert target_entity is already on or illuminance requirements met'
-    condition: template
-    value_template: >
-      {% set illuminance_defined = illuminance_currently != none and illuminance_cutoff != none  %}
-      {% set illuminance_defined_and_low = (illuminance_defined and (states(illuminance_currently) | int(0) < states(illuminance_cutoff) | int(0)))  %}
-
-      {% set target_entity_domain_supports_on_state_check = entity_domain != 'scene' and entity_domain != 'script' %}
-      {{
-      ( target_entity_domain_supports_on_state_check and is_state(target_entity, 'on') ) or
-      ( target_entity_domain_supports_on_state_check and is_state(target_entity, 'off') and not illuminance_defined) or
-      ( target_entity_domain_supports_on_state_check and is_state(target_entity, 'off') and illuminance_defined_and_low) or
-      ( not target_entity_domain_supports_on_state_check and illuminance_defined_and_low) or
-      ( not target_entity_domain_supports_on_state_check and not illuminance_defined)
-      }}
   - alias: 'Assert blocker_entity is not defined or off'
     condition: template
     value_template: "{{ (blocker_entity == none) or is_state(blocker_entity, 'off') }}"
@@ -169,7 +154,18 @@ action:
   - alias: 'Conditionally turn on target_entity'
     choose:
       - conditions:
-        - condition: template
+        - alias: 'Assert illuminance defined and below threshold'
+          condition: template
+          value_template: >
+            {% set illuminance_defined = illuminance_currently != none and illuminance_cutoff != none  %}
+            {% set illuminance_defined_and_low = (illuminance_defined and (states(illuminance_currently) | int(0) < states(illuminance_cutoff) | int(0)))  %}
+            {% set target_entity_domain_supports_on_state_check = entity_domain != 'scene' and entity_domain != 'script' %}
+            {{
+              (not illuminance_defined or illuminance_defined_and_low)
+              and (not target_entity_domain_supports_on_state_check or (target_entity_domain_supports_on_state_check and is_state(target_entity, 'off')))
+            }}
+        - alias: 'Assert time range provided and currently within range'
+          condition: template
           value_template: >
             {% set current_time = now().strftime("%H:%M")  %}
 
