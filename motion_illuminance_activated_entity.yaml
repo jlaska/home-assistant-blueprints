@@ -139,6 +139,7 @@ variables:
   turn_off_blocker_entity: !input turn_off_blocker_entity
   turn_off_blocker_wait: !input turn_off_blocker_wait
   target_off_entity: !input target_off_entity
+  off_entity_domain: "{{ target_off_entity != none and states[target_off_entity].domain or none }}"
 
 trigger:
   platform: state
@@ -245,5 +246,7 @@ action:
           service: homeassistant.turn_off
           entity_id: !input target_entity
     default:
-      - service: homeassistant.turn_off
+      - service: |-
+          {% set target_off_entity_domain_supports_turn_off = off_entity_domain not in ['scene', 'script'] %}
+          homeassistant.{{ target_off_entity_domain_supports_turn_off and 'turn_off' or 'turn_on' }}
         entity_id: !input target_off_entity
