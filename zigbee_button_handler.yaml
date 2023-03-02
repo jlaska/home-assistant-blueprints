@@ -2,6 +2,7 @@ mode: parallel
 max_exceeded: silent
 blueprint:
   domain: automation
+  author: James Laska
   name: Generic Zigbee button blueprint
   description: "Automate button press events for Zigbee button sensors. Supports both zha and zigbee2mqtt integrations as well as single, double, triple, hold and release events."
   source_url: https://github.com/jlaska/home-assistant-blueprints/blob/master/zigbee_button_handler.yaml

@@ -1,5 +1,6 @@
 blueprint:
   name: Z-Wave switch double-tap
+  author: James Laska
   description: Respond to double tap events from supported GE Z-Wave switches.
   domain: automation
 
