@@ -1,5 +1,7 @@
 blueprint:
   name: Turn on light, switch, scene, script or group based on motion and illuminance.
+  author: James Laska
+  domain: automation
   description: >
     Turn on a light, switch, scene, script or group based on motion detection, and low light level.
 
@@ -50,7 +52,6 @@ blueprint:
 
     - Blocking entity wait time (input_number defining amount in minutes)
 
-  domain: automation
   input:
     motion_sensor:
       name: Motion Sensor
