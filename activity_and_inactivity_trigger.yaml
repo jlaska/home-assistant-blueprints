@@ -178,20 +178,20 @@ variables:
   turn_on_before: !input turn_on_before
   turn_on_before_time: |-
     {%- if turn_on_before != none and turn_on_before.startswith('automation.') -%}
-      {{ state_attr(turn_on_before, 'last_triggered') }}
+      {{ state_attr(turn_on_before, 'last_triggered')|as_local }}
     {%- elif turn_on_before != none and turn_on_before.startswith('input_datetime.') -%}
       {{ states(turn_on_before) }}
     {%- else -%}
-      none
+      24:00:00
     {%- endif -%}
   turn_on_after: !input turn_on_after
   turn_on_after_time: |-
     {%- if turn_on_after != none and turn_on_after.startswith('automation.') -%}
-      {{ state_attr(turn_on_after, 'last_triggered') }}
+      {{ state_attr(turn_on_after, 'last_triggered')|as_local }}
     {%- elif turn_on_after != none and turn_on_after.startswith('input_datetime.') -%}
       {{ states(turn_on_after) }}
     {%- else -%}
-      none
+      00:00:00
     {%- endif -%}
 
   turn_off_target: !input turn_off_target
@@ -207,20 +207,20 @@ variables:
   turn_off_before: !input turn_off_before
   turn_off_before_time: |-
     {%- if turn_off_before != none and turn_off_before.startswith('automation.') -%}
-      {{ state_attr(turn_off_before, 'last_triggered') }}
+      {{ state_attr(turn_off_before, 'last_triggered')|as_local }}
     {%- elif turn_off_before != none and turn_off_before.startswith('input_datetime.') -%}
       {{ states(turn_off_before) }}
     {%- else -%}
-      none
+      24:00:00
     {%- endif -%}
   turn_off_after: !input turn_off_after
   turn_off_after_time: |-
     {%- if turn_off_after != none and turn_off_after.startswith('automation.') -%}
-      {{ state_attr(turn_off_after, 'last_triggered') }}
+      {{ state_attr(turn_off_after, 'last_triggered')|as_local }}
     {%- elif turn_off_after != none and turn_off_after.startswith('input_datetime.') -%}
       {{ states(turn_off_after) }}
     {%- else -%}
-      none
+      00:00:00
     {%- endif -%}
 
 trigger_variables:
@@ -336,29 +336,15 @@ action:
           condition: template
           value_template: >
             {% set current_time = now().strftime("%H:%M")  %}
+            {% set current_time_is_before_limit = current_time < turn_on_before_time  %}
+            {% set current_time_is_after_limit = current_time > turn_on_after_time  %}
+            {% set before_limit_is_tomorrow = turn_on_before_time < turn_on_after_time  %}
+            {% set time_window_spans_midnight = turn_on_after_time > turn_on_before_time  %}
 
-            {% if turn_on_before_time == none and turn_on_after_time == none %}
-            true
-            {% endif %}
-
-            {% if turn_on_before_time != none and turn_on_after_time == none %}
-            {% set current_time_is_before_limit = current_time < states(turn_on_before_time)  %}
-            {{ current_time_is_before_limit }}
-            {% elif turn_on_before_time == none and turn_on_after_time != none %}
-            {% set current_time_is_after_limit = current_time > states(turn_on_after_time)  %}
-            {{ current_time_is_after_limit }}
-            {% endif %}
-
-            {% if turn_on_before_time != none and turn_on_after_time != none %}
-            {% set before_limit_is_tomorrow = states(turn_on_before_time) < states(turn_on_after_time)  %}
-            {% set current_time_is_before_limit = current_time < states(turn_on_before_time)  %}
-            {% set current_time_is_after_limit = current_time > states(turn_on_after_time)  %}
-            {% set time_window_spans_midnight = states(turn_on_after_time) > states(turn_on_before_time)  %}
-              {% if time_window_spans_midnight != none and time_window_spans_midnight and before_limit_is_tomorrow %}
+            {% if time_window_spans_midnight and before_limit_is_tomorrow %}
               {{ current_time_is_after_limit or current_time_is_before_limit }}
-              {% elif time_window_spans_midnight != none and not time_window_spans_midnight %}
+            {% elif not time_window_spans_midnight %}
               {{ current_time_is_before_limit and current_time_is_after_limit }}
-              {% endif %}
             {% endif %}
 
         - service: homeassistant.turn_on
@@ -411,29 +397,15 @@ action:
           condition: template
           value_template: >
             {% set current_time = now().strftime("%H:%M")  %}
+            {% set current_time_is_before_limit = current_time < turn_off_before_time  %}
+            {% set current_time_is_after_limit = current_time > turn_off_after_time  %}
+            {% set before_limit_is_tomorrow = turn_off_before_time < turn_off_after_time  %}
+            {% set time_window_spans_midnight = turn_off_after_time > turn_off_before_time  %}
 
-            {% if turn_off_before_time == none and turn_off_after_time == none %}
-            true
-            {% endif %}
-
-            {% if turn_off_before_time != none and turn_off_after_time == none %}
-            {% set current_time_is_before_limit = current_time < states(turn_off_before_time)  %}
-            {{ current_time_is_before_limit }}
-            {% elif turn_off_before_time == none and turn_off_after_time != none %}
-            {% set current_time_is_after_limit = current_time > states(turn_off_after_time)  %}
-            {{ current_time_is_after_limit }}
-            {% endif %}
-
-            {% if turn_off_before_time != none and turn_off_after_time != none %}
-            {% set before_limit_is_tomorrow = states(turn_off_before_time) < states(turn_off_after_time)  %}
-            {% set current_time_is_before_limit = current_time < states(turn_off_before_time)  %}
-            {% set current_time_is_after_limit = current_time > states(turn_off_after_time)  %}
-            {% set time_window_spans_midnight = states(turn_off_after_time) > states(turn_off_before_time)  %}
-              {% if time_window_spans_midnight != none and time_window_spans_midnight and before_limit_is_tomorrow %}
+            {% if time_window_spans_midnight and before_limit_is_tomorrow %}
               {{ current_time_is_after_limit or current_time_is_before_limit }}
-              {% elif time_window_spans_midnight != none and not time_window_spans_midnight %}
+            {% elif not time_window_spans_midnight %}
               {{ current_time_is_before_limit and current_time_is_after_limit }}
-              {% endif %}
             {% endif %}
 
         - alias: "Optionally turn off target"
