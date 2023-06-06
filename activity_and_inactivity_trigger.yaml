@@ -130,8 +130,8 @@ blueprint:
           domain: input_number
     turn_off_blocker_entity:
       name: (OPTIONAL) Turn-off Blocking entity
-      description: If this entity's state is on, it will prevent the target
-        entity from turning off after the set delay.
+      description: If any of the provided entities state is on, it will prevent
+        the target entity from turning off after the set delay.
       default:
       selector:
         entity:
@@ -388,7 +388,7 @@ action:
               - condition: template
                 value_template: '{{ turn_off_blocker_wait != none }}'
             sequence:
-              - wait_template: "{{ is_state(turn_off_blocker_entity, 'off') }}"
+              - wait_template: "{{ expand(turn_off_blocker_entity)|selectattr('state', 'eq', 'on')|list|count == 0 }}"
                 timeout:
                   minutes: '{{ states(turn_off_blocker_wait) | int(0) }}'
               # The following doesn't work ... not sure why
@@ -402,7 +402,8 @@ action:
 
         - alias: "Assert turn_off_blocker_entity is not defined or off"
           condition: template
-          value_template: "{{ (turn_off_blocker_entity == none) or is_state(turn_off_blocker_entity, 'off') }}"
+          value_template: |-
+            {{ (turn_off_blocker_entity == none) or expand(turn_off_blocker_entity)|selectattr('state', 'eq', 'on')|list|count == 0 }}
 
         # If start_time defined and now > start_time
         # If stop_time defined and now < stop_time
