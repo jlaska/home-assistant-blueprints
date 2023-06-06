@@ -78,21 +78,27 @@ blueprint:
       selector:
         entity:
     turn_on_after:
-      name: (OPTIONAL) Only run after time.
-      description: Automation will only run when time is later than the
-        provided input_datetime value.
+      name: (OPTIONAL) Only turn on after time.
+      description: Automation will only turn entities on when time is later
+        than the provided input_datetime value.  When an automation is
+        provided, the last_triggered attribute will be used.
       default:
       selector:
         entity:
-          domain: input_datetime
+          domain:
+            - input_datetime
+            - automation
     turn_on_before:
-      name: (OPTIONAL) Only run before time.
-      description: Automation will only run when time is earlier than the
-        provided input_datetime value.
+      name: (OPTIONAL) Only turn on before time.
+      description: Automation will only turn entities on when time is earlier
+        than the provided input_datetime value.  When an automation is
+        provided, the last_triggered attribute will be used.
       default:
       selector:
         entity:
-          domain: input_datetime
+          domain:
+            - input_datetime
+            - automation
     turn_off_wait:
       name: (OPTIONAL) Turn off wait time (minutes)
       description: Time in minutes to leave the target entity on after last
@@ -142,7 +148,23 @@ variables:
   turn_on_illuminance_cutoff: !input turn_on_illuminance_cutoff
   turn_on_blocker_entity: !input turn_on_blocker_entity
   turn_on_before: !input turn_on_before
+  turn_on_before_time: |-
+    {%- if turn_on_before != none and turn_on_before.startswith('automation.') -%}
+      {{ state_attr(turn_on_before, 'last_triggered') }}
+    {%- elif turn_on_before != none and turn_on_before.startswith('input_datetime.') -%}
+      {{ states(turn_on_before) }}
+    {%- else -%}
+      none
+    {%- endif -%}
   turn_on_after: !input turn_on_after
+  turn_on_after_time: |-
+    {%- if turn_on_after != none and turn_on_after.startswith('automation.') -%}
+      {{ state_attr(turn_on_after, 'last_triggered') }}
+    {%- elif turn_on_after != none and turn_on_after.startswith('input_datetime.') -%}
+      {{ states(turn_on_after) }}
+    {%- else -%}
+      none
+    {%- endif -%}
   turn_off_wait: !input turn_off_wait
   turn_off_blocker_entity: !input turn_off_blocker_entity
   turn_off_blocker_wait: !input turn_off_blocker_wait
@@ -263,28 +285,30 @@ action:
 
         # If start_time defined and now > start_time
         # If stop_time defined and now < stop_time
+        # TODO - support last_triggered if using automation
+        #   state_attr('automation.sunset', 'last_triggered')
         - alias: 'Assert time defined and within limits - start_time < current_time < stop_time'
           condition: template
           value_template: >
             {% set current_time = now().strftime("%H:%M")  %}
 
-            {% if turn_on_before == none and turn_on_after == none %}
+            {% if turn_on_before_time == none and turn_on_after_time == none %}
             true
             {% endif %}
 
-            {% if turn_on_before != none and turn_on_after == none %}
-            {% set current_time_is_before_limit = current_time < states(turn_on_before)  %}
+            {% if turn_on_before_time != none and turn_on_after_time == none %}
+            {% set current_time_is_before_limit = current_time < states(turn_on_before_time)  %}
             {{ current_time_is_before_limit }}
-            {% elif turn_on_before == none and turn_on_after != none %}
-            {% set current_time_is_after_limit = current_time > states(turn_on_after)  %}
+            {% elif turn_on_before_time == none and turn_on_after_time != none %}
+            {% set current_time_is_after_limit = current_time > states(turn_on_after_time)  %}
             {{ current_time_is_after_limit }}
             {% endif %}
 
-            {% if turn_on_before != none and turn_on_after != none %}
-            {% set before_limit_is_tomorrow = states(turn_on_before) < states(turn_on_after)  %}
-            {% set current_time_is_before_limit = current_time < states(turn_on_before)  %}
-            {% set current_time_is_after_limit = current_time > states(turn_on_after)  %}
-            {% set time_window_spans_midnight = states(turn_on_after) > states(turn_on_before)  %}
+            {% if turn_on_before_time != none and turn_on_after_time != none %}
+            {% set before_limit_is_tomorrow = states(turn_on_before_time) < states(turn_on_after_time)  %}
+            {% set current_time_is_before_limit = current_time < states(turn_on_before_time)  %}
+            {% set current_time_is_after_limit = current_time > states(turn_on_after_time)  %}
+            {% set time_window_spans_midnight = states(turn_on_after_time) > states(turn_on_before_time)  %}
               {% if time_window_spans_midnight != none and time_window_spans_midnight and before_limit_is_tomorrow %}
               {{ current_time_is_after_limit or current_time_is_before_limit }}
               {% elif time_window_spans_midnight != none and not time_window_spans_midnight %}
