@@ -16,18 +16,23 @@ blueprint:
       - Trigger entities (light, switch, scene or script)
 
     Optional entities:
-      - Illuminance sensor (sensor in illuminance class)
-      - Illuminance cutoff value  (input_number)
-      - Blocking entity (any entity with state on/off)
-      - Time limit before (input_datetime)
-      - Time limit after (input_datetime)
+      - Turn on target (area, device or entities)
+      - Turn on illuminance sensor (sensor in illuminance class)
+      - Turn on illuminance cutoff value  (input_number)
+      - Turn on blocking entity (any entity with state on/off)
+      - Turn on time limit before (input_datetime, automation)
+      - Turn on time limit after (input_datetime, automation)
+
+      - Turn off target (area, device or entities)
       - Turn off wait time (input_number defining amount in minutes)
-      - Turn off entity (any entity_id that needs to be turned off after wait)
-      - Blocking entity wait time (input_number defining amount in minutes)
+      - Turn off blocking entity (any entity with state on/off)
+      - Turn off blocking entity wait time (input_number defining amount in minutes)
+      - Turn off time limit before (input_datetime, automation)
+      - Turn off time limit after (input_datetime, automation)
   input:
     trigger_entities:
       name: Trigger entities
-      description: Set of entities to trigger activity
+      description: Set of entities to trigger activity or inactivity
       selector:
         target:
           entity:
@@ -39,7 +44,7 @@ blueprint:
             - domain: light
             - domain: fan
     turn_on_target:
-      name: (OPTIONAL) Target entity to turn on
+      name: (OPTIONAL) Target entities to turn on
       description: The entity to turn on when the automation is triggered.
         Entity can be any entity, such as a light, fan, switch, scene or
         script.
@@ -99,9 +104,25 @@ blueprint:
           domain:
             - input_datetime
             - automation
+
+    turn_off_target:
+      name: (OPTIONAL) Target entities to turn off
+      description: If defined, the entity will be turned off when inactivity
+        is detected.
+      default:
+      selector:
+        target:
+          entity:
+            - domain:
+                - light
+                - fan
+                - switch
+                - scene
+                - script
+                - cover
     turn_off_wait:
       name: (OPTIONAL) Turn off wait time (minutes)
-      description: Time in minutes to leave the target entity on after last
+      description: Time in minutes to leave the trigger entity on after last
         motion is detected. If not used entity will turn off immediately.
       default:
       selector:
@@ -122,21 +143,28 @@ blueprint:
       selector:
         entity:
           domain: input_number
-    turn_off_target:
-      name: (OPTIONAL) Target entities to turn off
-      description: If defined, the entity will be turned off when inactivity
-        is detected.
+    turn_off_after:
+      name: (OPTIONAL) Only turn off entities after time.
+      description: Automation will only turn entities off when time is later
+        than the provided input_datetime value.  When an automation is
+        provided, the last_triggered attribute will be used.
       default:
       selector:
-        target:
-          entity:
-            - domain:
-                - light
-                - fan
-                - switch
-                - scene
-                - script
-                - cover
+        entity:
+          domain:
+            - input_datetime
+            - automation
+    turn_off_before:
+      name: (OPTIONAL) Only turn off before time.
+      description: Automation will only turn entities off when time is earlier
+        than the provided input_datetime value.  When an automation is
+        provided, the last_triggered attribute will be used.
+      default:
+      selector:
+        entity:
+          domain:
+            - input_datetime
+            - automation
 
 variables:
   trigger_entities: !input trigger_entities
@@ -165,9 +193,7 @@ variables:
     {%- else -%}
       none
     {%- endif -%}
-  turn_off_wait: !input turn_off_wait
-  turn_off_blocker_entity: !input turn_off_blocker_entity
-  turn_off_blocker_wait: !input turn_off_blocker_wait
+
   turn_off_target: !input turn_off_target
   turn_off_target_entities: |-
     {%- set turn_off_target_entities = turn_off_target.get('entity_id', []) -%}
@@ -175,6 +201,27 @@ variables:
       {%- set turn_off_target_entities = [turn_off_target_entities] -%}
     {%- endif -%}
     {{ turn_off_target_entities }}
+  turn_off_wait: !input turn_off_wait
+  turn_off_blocker_entity: !input turn_off_blocker_entity
+  turn_off_blocker_wait: !input turn_off_blocker_wait
+  turn_off_before: !input turn_off_before
+  turn_off_before_time: |-
+    {%- if turn_off_before != none and turn_off_before.startswith('automation.') -%}
+      {{ state_attr(turn_off_before, 'last_triggered') }}
+    {%- elif turn_off_before != none and turn_off_before.startswith('input_datetime.') -%}
+      {{ states(turn_off_before) }}
+    {%- else -%}
+      none
+    {%- endif -%}
+  turn_off_after: !input turn_off_after
+  turn_off_after_time: |-
+    {%- if turn_off_after != none and turn_off_after.startswith('automation.') -%}
+      {{ state_attr(turn_off_after, 'last_triggered') }}
+    {%- elif turn_off_after != none and turn_off_after.startswith('input_datetime.') -%}
+      {{ states(turn_off_after) }}
+    {%- else -%}
+      none
+    {%- endif -%}
 
 trigger_variables:
   trigger_entities: !input trigger_entities
@@ -285,8 +332,6 @@ action:
 
         # If start_time defined and now > start_time
         # If stop_time defined and now < stop_time
-        # TODO - support last_triggered if using automation
-        #   state_attr('automation.sunset', 'last_triggered')
         - alias: 'Assert time defined and within limits - start_time < current_time < stop_time'
           condition: template
           value_template: >
@@ -358,6 +403,37 @@ action:
         - alias: "Assert turn_off_blocker_entity is not defined or off"
           condition: template
           value_template: "{{ (turn_off_blocker_entity == none) or is_state(turn_off_blocker_entity, 'off') }}"
+
+        # If start_time defined and now > start_time
+        # If stop_time defined and now < stop_time
+        - alias: 'Assert turn-off times are defined and within limits - start_time < current_time < stop_time'
+          condition: template
+          value_template: >
+            {% set current_time = now().strftime("%H:%M")  %}
+
+            {% if turn_off_before_time == none and turn_off_after_time == none %}
+            true
+            {% endif %}
+
+            {% if turn_off_before_time != none and turn_off_after_time == none %}
+            {% set current_time_is_before_limit = current_time < states(turn_off_before_time)  %}
+            {{ current_time_is_before_limit }}
+            {% elif turn_off_before_time == none and turn_off_after_time != none %}
+            {% set current_time_is_after_limit = current_time > states(turn_off_after_time)  %}
+            {{ current_time_is_after_limit }}
+            {% endif %}
+
+            {% if turn_off_before_time != none and turn_off_after_time != none %}
+            {% set before_limit_is_tomorrow = states(turn_off_before_time) < states(turn_off_after_time)  %}
+            {% set current_time_is_before_limit = current_time < states(turn_off_before_time)  %}
+            {% set current_time_is_after_limit = current_time > states(turn_off_after_time)  %}
+            {% set time_window_spans_midnight = states(turn_off_after_time) > states(turn_off_before_time)  %}
+              {% if time_window_spans_midnight != none and time_window_spans_midnight and before_limit_is_tomorrow %}
+              {{ current_time_is_after_limit or current_time_is_before_limit }}
+              {% elif time_window_spans_midnight != none and not time_window_spans_midnight %}
+              {{ current_time_is_before_limit and current_time_is_after_limit }}
+              {% endif %}
+            {% endif %}
 
         - alias: "Optionally turn off target"
           choose:
