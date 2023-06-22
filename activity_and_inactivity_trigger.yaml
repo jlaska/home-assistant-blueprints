@@ -369,8 +369,21 @@ action:
                 |selectattr('state', 'ne', 'on')
                 |selectattr('last_changed', 'lt', utcnow() - timedelta(minutes=states(turn_off_wait or '')|int(0)))
                 |list|count == expand(trigger_entities.entity_id) | list | count)
-            }}
+                }}
+        - alias: 'Assert turn-off times are defined and within limits - start_time < current_time < stop_time'
+          condition: template
+          value_template: >
+            {% set current_time = now().strftime("%H:%M")  %}
+            {% set current_time_is_before_limit = current_time < turn_off_before_time  %}
+            {% set current_time_is_after_limit = current_time > turn_off_after_time  %}
+            {% set before_limit_is_tomorrow = turn_off_before_time < turn_off_after_time  %}
+            {% set time_window_spans_midnight = turn_off_after_time > turn_off_before_time  %}
 
+            {% if time_window_spans_midnight and before_limit_is_tomorrow %}
+              {{ current_time_is_after_limit or current_time_is_before_limit }}
+            {% elif not time_window_spans_midnight %}
+              {{ current_time_is_before_limit and current_time_is_after_limit }}
+            {% endif %}
         - alias: "Wait for turn_off_blocker_entity"
           choose:
             conditions:
@@ -395,23 +408,6 @@ action:
           condition: template
           value_template: |-
             {{ (turn_off_blocker_entity == none) or expand(turn_off_blocker_entity)|selectattr('state', 'eq', 'on')|list|count == 0 }}
-
-        # If start_time defined and now > start_time
-        # If stop_time defined and now < stop_time
-        - alias: 'Assert turn-off times are defined and within limits - start_time < current_time < stop_time'
-          condition: template
-          value_template: >
-            {% set current_time = now().strftime("%H:%M")  %}
-            {% set current_time_is_before_limit = current_time < turn_off_before_time  %}
-            {% set current_time_is_after_limit = current_time > turn_off_after_time  %}
-            {% set before_limit_is_tomorrow = turn_off_before_time < turn_off_after_time  %}
-            {% set time_window_spans_midnight = turn_off_after_time > turn_off_before_time  %}
-
-            {% if time_window_spans_midnight and before_limit_is_tomorrow %}
-              {{ current_time_is_after_limit or current_time_is_before_limit }}
-            {% elif not time_window_spans_midnight %}
-              {{ current_time_is_before_limit and current_time_is_after_limit }}
-            {% endif %}
 
         - alias: "Optionally turn off target"
           choose:
