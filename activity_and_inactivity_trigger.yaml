@@ -306,13 +306,14 @@ condition:
   or:
     - "{{ trigger.id in ['entity_activity', 'area_activity'] }}"
     - "{{ trigger.id in ['entity_inactivity', 'area_inactivity'] }}"
+    - "{{ trigger.id in ['blocker_entity_inactivity'] }}"
     # TODO - support blocker_entity_inactivity
     # value_template: "{{ trigger.id in ['entity_inactivity', 'area_inactivity', 'blocker_entity_inactivity'] }}"
 
 action:
   - choose:
     - conditions:
-        - alias: "Triggered by entity_activity or area_activity"
+        - alias: "Triggered by activity"
           condition: template
           value_template: "{{ trigger.id in ['entity_activity', 'area_activity'] }}"
       sequence:
@@ -355,9 +356,9 @@ action:
           target: "{{ turn_on_target }}"
 
     - conditions:
-        - alias: "Triggered by entity_inactivity or area_inactivity"
+        - alias: "Triggered by inactivity"
           condition: template
-          value_template: "{{ trigger.id in ['entity_inactivity', 'area_inactivity'] }}"
+          value_template: "{{ trigger.id in ['entity_inactivity', 'area_inactivity', 'blocker_entity_inactivity'] }}"
       sequence:
         - alias: "Assert trigger_entities is not defined or all trigger_entities are off for turn_off_wait minutes"
           condition: template
