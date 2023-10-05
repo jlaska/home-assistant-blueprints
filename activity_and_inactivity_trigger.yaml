@@ -179,7 +179,7 @@ variables:
     {%- if turn_on_before != none and turn_on_before.startswith('automation.') -%}
       {{ state_attr(turn_on_before, 'last_triggered')|as_local }}
     {%- elif turn_on_before != none and turn_on_before.startswith('input_datetime.') -%}
-      {{ states(turn_on_before) }}
+      {{ states(turn_on_before)|today_at }}
     {%- else -%}
       24:00:00
     {%- endif -%}
@@ -188,7 +188,7 @@ variables:
     {%- if turn_on_after != none and turn_on_after.startswith('automation.') -%}
       {{ state_attr(turn_on_after, 'last_triggered')|as_local }}
     {%- elif turn_on_after != none and turn_on_after.startswith('input_datetime.') -%}
-      {{ states(turn_on_after) }}
+      {{ states(turn_on_after)|today_at }}
     {%- else -%}
       00:00:00
     {%- endif -%}
@@ -204,7 +204,7 @@ variables:
     {%- if turn_off_before != none and turn_off_before.startswith('automation.') -%}
       {{ state_attr(turn_off_before, 'last_triggered')|as_local }}
     {%- elif turn_off_before != none and turn_off_before.startswith('input_datetime.') -%}
-      {{ states(turn_off_before) }}
+      {{ states(turn_off_before)|today_at }}
     {%- else -%}
       24:00:00
     {%- endif -%}
@@ -213,7 +213,7 @@ variables:
     {%- if turn_off_after != none and turn_off_after.startswith('automation.') -%}
       {{ state_attr(turn_off_after, 'last_triggered')|as_local }}
     {%- elif turn_off_after != none and turn_off_after.startswith('input_datetime.') -%}
-      {{ states(turn_off_after) }}
+      {{ states(turn_off_after)|today_at }}
     {%- else -%}
       00:00:00
     {%- endif -%}
