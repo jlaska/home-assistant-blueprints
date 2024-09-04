@@ -58,7 +58,6 @@ blueprint:
                 - switch
                 - scene
                 - script
-                - cover
     illuminance_entity:
       name: (OPTIONAL) Illuminance sensor
       description: Sensor that determines current illumination.
@@ -119,7 +118,6 @@ blueprint:
                 - switch
                 - scene
                 - script
-                - cover
     turn_off_wait:
       name: (OPTIONAL) Turn off wait time (minutes)
       description: Time in minutes to leave the trigger entity on after last
@@ -179,18 +177,18 @@ variables:
     {%- if turn_on_before != none and turn_on_before.startswith('automation.') -%}
       {{ state_attr(turn_on_before, 'last_triggered')|as_local }}
     {%- elif turn_on_before != none and turn_on_before.startswith('input_datetime.') -%}
-      {{ states(turn_on_before)|today_at }}
+      {{ states(turn_on_before) }}
     {%- else -%}
-      24:00:00
+      {{ '23:59:59' }}
     {%- endif -%}
   turn_on_after: !input turn_on_after
   turn_on_after_time: |-
     {%- if turn_on_after != none and turn_on_after.startswith('automation.') -%}
       {{ state_attr(turn_on_after, 'last_triggered')|as_local }}
     {%- elif turn_on_after != none and turn_on_after.startswith('input_datetime.') -%}
-      {{ states(turn_on_after)|today_at }}
+      {{ states(turn_on_after) }}
     {%- else -%}
-      00:00:00
+      {{ '00:00:00' }}
     {%- endif -%}
 
   turn_off_target: !input turn_off_target
@@ -204,18 +202,18 @@ variables:
     {%- if turn_off_before != none and turn_off_before.startswith('automation.') -%}
       {{ state_attr(turn_off_before, 'last_triggered')|as_local }}
     {%- elif turn_off_before != none and turn_off_before.startswith('input_datetime.') -%}
-      {{ states(turn_off_before)|today_at }}
+      {{ states(turn_off_before) }}
     {%- else -%}
-      24:00:00
+      {{ '23:59:59' }}
     {%- endif -%}
   turn_off_after: !input turn_off_after
   turn_off_after_time: |-
     {%- if turn_off_after != none and turn_off_after.startswith('automation.') -%}
       {{ state_attr(turn_off_after, 'last_triggered')|as_local }}
     {%- elif turn_off_after != none and turn_off_after.startswith('input_datetime.') -%}
-      {{ states(turn_off_after)|today_at }}
+      {{ states(turn_off_after) }}
     {%- else -%}
-      00:00:00
+      {{ '00:00:00' }}
     {%- endif -%}
 
 trigger_variables:
@@ -341,7 +339,7 @@ action:
         - alias: 'Assert time defined and within limits - start_time < current_time < stop_time'
           condition: template
           value_template: >
-            {% set current_time = now().strftime("%H:%M")  %}
+            {% set current_time = now().strftime('%H:%M:%S')  %}
             {% set current_time_is_before_limit = current_time < turn_on_before_time  %}
             {% set current_time_is_after_limit = current_time > turn_on_after_time  %}
             {% set before_limit_is_tomorrow = turn_on_before_time < turn_on_after_time  %}
@@ -374,7 +372,7 @@ action:
         - alias: 'Assert turn-off times are defined and within limits - start_time < current_time < stop_time'
           condition: template
           value_template: >
-            {% set current_time = now().strftime("%H:%M")  %}
+            {% set current_time = now().strftime('%H:%M:%S')  %}
             {% set current_time_is_before_limit = current_time < turn_off_before_time  %}
             {% set current_time_is_after_limit = current_time > turn_off_after_time  %}
             {% set before_limit_is_tomorrow = turn_off_before_time < turn_off_after_time  %}
