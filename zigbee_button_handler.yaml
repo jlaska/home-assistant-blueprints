@@ -1,12 +1,12 @@
-# MQTT Tpoic Example - https://community.home-assistant.io/t/zigbee2mqtt-control-light-entity-including-press-turn-with-tuya-moes-smart-knob-ers-10tzbvk-aa/787779
-# Device event Example - https://community.home-assistant.io/t/aqara-wireless-switch-wxkg11lm-via-zigbee2mqtt-device-trigger/808126
+# Home Assistent Event Entity Trigger - https://www.zigbee2mqtt.io/guide/usage/integrations/home_assistant.html#via-home-assistant-event-entity-experimental
+# MQTT Device Trigger - https://www.zigbee2mqtt.io/guide/usage/integrations/home_assistant.html#via-mqtt-device-trigger-recommended
 mode: parallel
 max_exceeded: silent
 blueprint:
   domain: automation
   author: James Laska
   name: Generic Zigbee button blueprint
-  description: "Automate button press events. Supports zigbee2mqtt integration with single, double, triple, hold and release events."
+  description: "Automate button press events using zigbee2mqtt 'event' entity trigger. Supports single, double, triple, hold and release events."
   source_url: https://github.com/jlaska/home-assistant-blueprints/blob/master/zigbee_button_handler.yaml
   input:
     mqtt_event:
