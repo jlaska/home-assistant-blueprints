@@ -87,7 +87,7 @@ action:
         (trigger.platform == 'event' and trigger.event.data.args.press_type) or
         (trigger.platform == 'state' and trigger.attribute != 'event_type' and trigger.to_state.state) or
         (trigger.platform == 'state' and trigger.attribute == 'event_type' and trigger.to_state.attributes.event_type) or
-        (trigger.platform == 'mqtt' and trigger.payload_json.action) or
+        (trigger.platform == 'mqtt' and trigger.payload_json.action)
       }}
 - choose:
   - conditions: '{{ command == ''single'' }}'
