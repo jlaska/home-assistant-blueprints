@@ -29,7 +29,7 @@ blueprint:
     mqtt_topic:
       name: MQTT Topic
       description: Topic of the Philips Hue Tap Dial Switch (e.g. zigbee2mqtt/<device name>)
-      default:
+      default: 'zigbee2mqtt/'
     mqtt_event:
       name: MQTT Event
       description: MQTT Event entity to trigger actions
