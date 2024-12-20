@@ -78,7 +78,7 @@ trigger:
 - platform: mqtt
   topic: !input 'mqtt_topic'
 - platform: state
-  topic: !input 'mqtt_event'
+  entity_id: !input 'mqtt_event'
   attribute: event_type
 action:
 - variables:
