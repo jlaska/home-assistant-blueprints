@@ -79,14 +79,15 @@ trigger:
   topic: !input 'mqtt_topic'
 - platform: state
   entity_id: !input 'mqtt_event'
-  attribute: event_type
+  from: null
+  to: null
 action:
 - variables:
     command: |-
       {{
         (trigger.platform == 'event' and trigger.event.data.args.press_type) or
-        (trigger.platform == 'state' and trigger.attribute != 'event_type' and trigger.to_state.state) or
-        (trigger.platform == 'state' and trigger.attribute == 'event_type' and trigger.attribute == 'event_type' and trigger.to_state.attributes.event_type) or
+        (trigger.platform == 'state' and 'event_type' not in trigger.to_state.attributes and trigger.to_state.state) or
+        (trigger.platform == 'state' and 'event_type' in trigger.to_state.attributes and trigger.to_state.attributes.event_type) or
         (trigger.platform == 'mqtt' and trigger.payload_json.action) or "unknown"
       }}
 - choose:
