@@ -11,15 +11,16 @@ blueprint:
   input:
     mqtt_sensor:
       name: MQTT Sensor
-      description: The MQTT entity (domain:sensor) to use
+      description: The MQTT entity (domain:sensor) to trigger events
       default:
       selector:
         entity:
+          multiple: true
           domain: sensor
           integration: mqtt
     zha_sensor:
       name: ZHA Button
-      description: The ZHA device (model:button) to use
+      description: The ZHA device (model:button) to trigger events
       default:
       selector:
         device:
@@ -27,8 +28,8 @@ blueprint:
           model: button
     mqtt_topic:
       name: MQTT Topic
-      description: Topic of the Philips Hue Tap Dial Switch
-      default: zigbee2mqtt/<device name>
+      description: Topic of the Philips Hue Tap Dial Switch (e.g. zigbee2mqtt/<device name>)
+      default:
     single_action:
       name: Single button press
       description: Action to run on single button press
