@@ -6,26 +6,9 @@ blueprint:
   domain: automation
   author: James Laska
   name: Generic Zigbee button blueprint
-  description: "Automate button press events for Zigbee button sensors. Supports both zha and zigbee2mqtt integrations as well as single, double, triple, hold and release events."
+  description: "Automate button press events. Supports zigbee2mqtt integration with single, double, triple, hold and release events."
   source_url: https://github.com/jlaska/home-assistant-blueprints/blob/master/zigbee_button_handler.yaml
   input:
-    mqtt_sensor:
-      name: MQTT Sensor
-      description: The MQTT entity (domain:sensor) to trigger events
-      default:
-      selector:
-        entity:
-          multiple: true
-          domain: sensor
-          integration: mqtt
-    zha_sensor:
-      name: ZHA Button
-      description: The ZHA device (model:button) to trigger events
-      default:
-      selector:
-        device:
-          integration: zha
-          model: button
     mqtt_event:
       name: MQTT Event
       description: MQTT Event entity to trigger actions
@@ -39,7 +22,7 @@ blueprint:
       description: MQTT Device to trigger actions
       selector:
         device:
-          multiple: true
+          multiple: false
           integration: mqtt
     single_action:
       name: Single button press
@@ -72,12 +55,6 @@ blueprint:
       selector:
         action: {}
 trigger:
-- platform: event
-  event_type: zha_event
-  event_data:
-    device_id: !input 'zha_sensor'
-- platform: state
-  entity_id: !input 'mqtt_sensor'
 - platform: state
   entity_id: !input 'mqtt_event'
   from: null
@@ -106,9 +83,7 @@ action:
 - variables:
     command: |-
       {{
-        (trigger.platform == 'event' and trigger.event.data.args.press_type) or
-        (trigger.platform == 'state' and 'event_type' not in trigger.to_state.attributes and trigger.to_state.state) or
-        (trigger.platform == 'state' and 'event_type' in trigger.to_state.attributes and trigger.to_state.attributes.event_type) or
+        (trigger.platform == 'state' and trigger.to_state.attributes.event_type) or
         (trigger.platform == 'mqtt' and trigger.payload)
       }}
 - choose:
