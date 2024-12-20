@@ -85,8 +85,8 @@ action:
     command: |-
       {{
         (trigger.platform == 'event' and trigger.event.data.args.press_type) or
-        (trigger.platform == 'state' and trigger.attribute is None and trigger.to_state.state) or
-        (trigger.platform == 'state' and trigger.attribute is not None and trigger.attribute == 'event_type' and trigger.to_state.attributes.event_type) or
+        (trigger.platform == 'state' and trigger.attribute is none and trigger.to_state.state) or
+        (trigger.platform == 'state' and trigger.attribute is not none and trigger.attribute == 'event_type' and trigger.to_state.attributes.event_type) or
         (trigger.platform == 'mqtt' and trigger.payload_json.action)
       }}
 - choose:
