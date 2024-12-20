@@ -26,10 +26,6 @@ blueprint:
         device:
           integration: zha
           model: button
-    mqtt_topic:
-      name: MQTT Topic
-      description: Topic of the Philips Hue Tap Dial Switch (e.g. zigbee2mqtt/<device name>)
-      default: 'zigbee2mqtt/'
     mqtt_event:
       name: MQTT Event
       description: MQTT Event entity to trigger actions
@@ -37,6 +33,13 @@ blueprint:
         entity:
           multiple: true
           domain: event
+          integration: mqtt
+    mqtt_device:
+      name: MQTT Device
+      description: MQTT Device to trigger actions
+      selector:
+        device:
+          multiple: true
           integration: mqtt
     single_action:
       name: Single button press
@@ -75,12 +78,30 @@ trigger:
     device_id: !input 'zha_sensor'
 - platform: state
   entity_id: !input 'mqtt_sensor'
-- platform: mqtt
-  topic: !input 'mqtt_topic'
 - platform: state
   entity_id: !input 'mqtt_event'
   from: null
   to: null
+- platform: device
+  domain: mqtt
+  device_id: !input 'mqtt_device'
+  type: action
+  subtype: single
+- platform: device
+  domain: mqtt
+  device_id: !input 'mqtt_device'
+  type: action
+  subtype: double
+- platform: device
+  domain: mqtt
+  device_id: !input 'mqtt_device'
+  type: action
+  subtype: hold
+- platform: device
+  domain: mqtt
+  device_id: !input 'mqtt_device'
+  type: action
+  subtype: release
 action:
 - variables:
     command: |-
@@ -88,7 +109,7 @@ action:
         (trigger.platform == 'event' and trigger.event.data.args.press_type) or
         (trigger.platform == 'state' and 'event_type' not in trigger.to_state.attributes and trigger.to_state.state) or
         (trigger.platform == 'state' and 'event_type' in trigger.to_state.attributes and trigger.to_state.attributes.event_type) or
-        (trigger.platform == 'mqtt' and trigger.payload_json.action) or "unknown"
+        (trigger.platform == 'mqtt' and trigger.payload)
       }}
 - choose:
   - conditions: '{{ command == ''single'' }}'
