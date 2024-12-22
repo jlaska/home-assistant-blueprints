@@ -57,8 +57,15 @@ blueprint:
 trigger:
 - platform: state
   entity_id: !input 'mqtt_event'
+  not_from:
+    - "unknown"
+    - "unavailable"
+  not_to:
+    - "unknown"
+    - "unavailable"
   from: null
   to: null
+# Commented out ... can't figure out how to get HASS to like when 'mqtt_device' is not defined
 #- platform: device
 #  domain: mqtt
 #  device_id: !input 'mqtt_device'
